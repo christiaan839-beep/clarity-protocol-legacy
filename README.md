@@ -16,22 +16,12 @@ Frontend: JavaScript, HTML, CSS. Backend / Platform: Firebase (Auth, Firestore, 
 
 ## Getting Started
 
-Serve locally with the Firebase CLI:
+Serve locally with the Firebase CLI using `firebase emulators:start`. Build PDF resources with `python build_pdfs.py`. Deploy via GitHub Actions on push to main, or manually with `firebase deploy`.
 
-    firebase emulators:start
+## Project Structure
 
-    Build PDF resources:
+The app source lives in the `app/` directory, with guide content in `content/` and generated resources in `PDFs/`. PDF build scripts are `build_pdfs.py` and `build_premium.py`. Firestore security rules are in `firestore.rules`, and CI/CD auto-deploy workflows are in `.github/workflows/`.
 
-        python build_pdfs.py
+## License
 
-        Deploy (via GitHub Actions on push to main, or manually):
-
-            firebase deploy
-
-            ## Project Structure
-
-            The app source lives in the app/ directory, with guide content in content/ and generated resources in PDFs/. PDF build scripts are build_pdfs.py and build_premium.py. Firestore security rules are in firestore.rules, and CI/CD auto-deploy workflows are in .github/workflows/.
-
-            ## License
-
-            Add a license (e.g., MIT or proprietary).
+Add a license (e.g., MIT or proprietary).
