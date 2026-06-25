@@ -6,35 +6,18 @@
 
 import { SovereignData } from './SovereignData.js';
 
-// Sourced from data/female_phasic.json
-const FEMALE_ENGINE = {
-    "seasons": {
-        "winter": {
-            "name": "WINTER (Menstrual)",
-            "days": [1, 5],
-            "bio_state": "All Hormones Low",
-            "protocols": { "allowed": "Yoga, Walking", "forbidden": "HIIT, Heavy Lifting", "focus": "Restoration" }
-        },
-        "spring": {
-            "name": "SPRING (Follicular)",
-            "days": [6, 12],
-            "bio_state": "Estrogen Rising",
-            "protocols": { "allowed": "Skill Work, Handstands", "forbidden": "", "focus": "Neuroplasticity" }
-        },
-        "summer": {
-            "name": "SUMMER (Ovulatory)",
-            "days": [13, 17],
-            "bio_state": "Estrogen & Test Peak",
-            "protocols": { "allowed": "PR Attempts, HIIT", "forbidden": "", "focus": "Max Force" }
-        },
-        "autumn": {
-            "name": "AUTUMN (Luteal)",
-            "days": [18, 28],
-            "bio_state": "Progesterone Rising",
-            "protocols": { "allowed": "Pilates, Zone 2", "forbidden": "HIIT, Fasting", "focus": "Metabolic Stability" }
-        }
+let FEMALE_ENGINE = { seasons: {} };
+
+try {
+    const response = await fetch('data/female_phasic.json');
+    if (response.ok) {
+        FEMALE_ENGINE = await response.json();
+    } else {
+        console.error(`Failed to load female_phasic.json: ${response.status}`);
     }
-};
+} catch (e) {
+    console.error("Failed to load female_phasic.json", e);
+}
 
 export const FemaleTrack = {
     getCycleDay() {
@@ -43,31 +26,60 @@ export const FemaleTrack = {
         const start = new Date(startStr);
         const now = new Date();
         const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+        if (diff < 0) return 1;
         return (diff % 28) + 1;
     },
 
     getCurrentPhase() {
         const day = this.getCycleDay();
-        if (day <= 5) return FEMALE_ENGINE.seasons.winter;
-        if (day <= 12) return FEMALE_ENGINE.seasons.spring;
-        if (day <= 17) return FEMALE_ENGINE.seasons.summer;
-        return FEMALE_ENGINE.seasons.autumn;
+        if (FEMALE_ENGINE && FEMALE_ENGINE.seasons) {
+            for (const [key, season] of Object.entries(FEMALE_ENGINE.seasons)) {
+                if (day >= season.days[0] && day <= season.days[1]) {
+                    season.key = key;
+                    return season;
+                }
+            }
+        }
+        // Fallback
+        return FEMALE_ENGINE?.seasons?.autumn || {
+            phase: "Unknown",
+            key: "unknown",
+            bio_state: "Unknown",
+            protocols: { allowed: [], forbidden: [], nutrition_focus: "" }
+        };
     },
 
     getBioState() {
         const phase = this.getCurrentPhase();
-        return `${phase.name} (Day ${this.getCycleDay()})`;
+        const seasonName = phase.key ? phase.key.toUpperCase() : "UNKNOWN";
+        const phaseName = phase.phase || "";
+        return `${seasonName} (${phaseName}) (Day ${this.getCycleDay()})`;
     },
 
     getDailyProtocol() {
         const phase = this.getCurrentPhase();
         const day = this.getCycleDay();
+        const protocols = phase.protocols || {};
 
-        let moveItem = { id: "f_2", type: "move", text: `Movement: ${phase.protocols.allowed}`, completed: false };
-        let foodItem = { id: "f_3", type: "digest", text: `Nutrition: ${phase.protocols.focus} Diet`, completed: false };
+        const allowed = Array.isArray(protocols.allowed) ? protocols.allowed.join(", ") : protocols.allowed;
+        const forbidden = Array.isArray(protocols.forbidden) ? protocols.forbidden.join(", ") : protocols.forbidden;
 
-        if (phase.protocols.forbidden) {
-            moveItem.text += ` (NO ${phase.protocols.forbidden})`;
+        let moveItem = {
+            id: "f_2",
+            type: "move",
+            text: `Movement: ${allowed} (Focus: ${phase.training_logic || 'Standard'})`,
+            completed: false
+        };
+
+        let foodItem = {
+            id: "f_3",
+            type: "digest",
+            text: `Nutrition: ${phase.nutrition_logic || 'Standard'} (Focus: ${protocols.nutrition_focus || 'Balanced'})`,
+            completed: false
+        };
+
+        if (forbidden && forbidden.length > 0) {
+            moveItem.text += ` (NO ${forbidden})`;
         }
 
         return [
